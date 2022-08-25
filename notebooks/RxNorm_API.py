@@ -1,3 +1,4 @@
+from select import select
 import requests
 import traceback
 from rxnorm_restful_api import RXNORM_RESTFUL_API
@@ -39,9 +40,41 @@ class RxNorm:
         if info.text == 'null':
             return False
         tree = ET.fromstring(requests.get(rest_api).text)
-        rxcui = tree.findall('.//rxcui')[0] ## need to add an if statement, that if the score is less than X, return "no-match"
-        return rxcui.text
+        rxcui = [rxcui_.text for rxcui_ in tree.findall('.//rxcui')]
+        return rxcui
 
+    def primary_ingredient(self, task='get_primary_ingredient', **kwargs):
+        self.logger = create_logger(task)
+        self.logger.info(f'start task {task}...')
+        
+        if 'timeout' in kwargs:
+            self.timeout = kwargs.get('timeout')
+
+        if task == 'get_primary_ingredient':
+            assert 'rxcui' in kwargs, 'rxcui must be provided for this task'
+            return self.__get_primary_ingredient(rxcui=kwargs.get('rxcui'))
+
+        # reset timeout to config timeout
+        self.timeout = REQUESTS_TIMEOUT
+
+    def __get_primary_ingredient(self, rxcui):
+        rest_api = self.rxnorm_restful_api.get_primary_ingredient(rxcui)
+        #self.logger.info(f'restful api: {rest_api}')
+
+        info = self.session.get(rest_api, headers=headers, timeout=self.timeout)
+        #self.logger.info(f'status: {info.status_code}')
+        if info.text == 'null':
+            return False
+
+        tree = ET.fromstring(requests.get(rest_api).text)
+        ingredient = [ing.text for ing in tree.findall(".//conceptGroup[tty='IN']/conceptProperties/rxcui")]
+        
+        if not ingredient:
+            return 'NULL'
+        else:
+            return ingredient[0]
+
+        
 
     
     def get_codes(self, task='get_rxcui_codes', **kwargs):
@@ -78,6 +111,7 @@ class RxNorm:
         return pd.DataFrame(data = np.array([', '.join(SNOMED_CT),', '.join(MMSL)]).reshape(1,-1), columns = ['SNOMEDCT','MMSL'])
 
 
+
     def get_names(self, task='get_rxcui_names', **kwargs):
         self.logger = create_logger(task)
         self.logger.info(f'start task {task}...')
@@ -109,18 +143,38 @@ class RxNorm:
 
 def test():
     rxnorm = RxNorm()
-    term = "warfarin"
+    term = "sodium chloride 0.9% intravenous solution 500 mL(s)"
     rxcui = rxnorm.approximate_term(term = term)
-    codes = rxnorm.get_codes(rxcui = rxcui)
-    names = rxnorm.get_names(rxcui = rxcui)
 
-    codes['Name'] = names
-    codes['rxcui'] = rxcui
-    codes['input_term'] = term
+    i=0
+    while i < len(rxcui):
+        codes = rxnorm.get_codes(rxcui = rxcui[i])
 
-    codes = codes[['input_term','Name','rxcui','SNOMEDCT','MMSL']]
+        if (codes[['SNOMEDCT','MMSL']]=='NULL').all(axis=1).values[0]:
+            i+=1
+            codes = rxnorm.get_codes(rxcui = rxcui[i])
+        else:
+            selected_rxcui = rxcui[i]
+            i=len(rxcui)
+        
+    if selected_rxcui == 'NULL':
+        print(pd.DataFrame(np.array([term,'NULL',rxcui,'NULL','NULL']).reshape(1,-1), columns=['input_term','Name','rxcui','SNOMEDCT','MMSL']))
+    else:
+        primary_IN_rxcui = rxnorm.primary_ingredient(rxcui=selected_rxcui)
 
-    print(codes)
+        if primary_IN_rxcui == 'NULL':
+            primary_IN_rxcui = selected_rxcui
+
+        #codes = rxnorm.get_codes(rxcui = primary_IN_rxcui)
+        #names = rxnorm.get_names(rxcui = primary_IN_rxcui)
+
+        #codes['Name'] = names
+        #codes['rxcui'] = primary_IN_rxcui
+        #codes['input_term'] = term
+
+        #codes = codes[['input_term','Name','rxcui','SNOMEDCT','MMSL']]
+
+        #print(codes)
 
 if __name__ == '__main__':
     test()
