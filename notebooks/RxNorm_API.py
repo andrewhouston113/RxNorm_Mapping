@@ -17,6 +17,8 @@ class RxNorm:
         self.timeout = REQUESTS_TIMEOUT
         self.session = requests.Session()
 
+    
+
     def approximate_term(self, task='get_approximate_term', **kwargs):
         self.logger = create_logger(task)
         self.logger.info(f'start task {task}...')
@@ -43,6 +45,8 @@ class RxNorm:
         rxcui = [rxcui_.text for rxcui_ in tree.findall('.//rxcui')]
         return rxcui
 
+
+
     def primary_ingredient(self, task='get_primary_ingredient', **kwargs):
         self.logger = create_logger(task)
         self.logger.info(f'start task {task}...')
@@ -65,7 +69,6 @@ class RxNorm:
         #self.logger.info(f'status: {info.status_code}')
         if info.text == 'null':
             return False
-
         tree = ET.fromstring(requests.get(rest_api).text)
         ingredient = [ing.text for ing in tree.findall(".//conceptGroup[tty='IN']/conceptProperties/rxcui")]
         
@@ -75,7 +78,6 @@ class RxNorm:
             return ingredient[0]
 
         
-
     
     def get_codes(self, task='get_rxcui_codes', **kwargs):
         self.logger = create_logger(task)
@@ -108,7 +110,7 @@ class RxNorm:
         if not MMSL:
             MMSL = ['NULL']
 
-        return pd.DataFrame(data = np.array([', '.join(SNOMED_CT),', '.join(MMSL)]).reshape(1,-1), columns = ['SNOMEDCT','MMSL'])
+        return ', '.join(SNOMED_CT), ', '.join(MMSL)
 
 
 
@@ -156,7 +158,7 @@ def test():
         else:
             selected_rxcui = rxcui[i]
             i=len(rxcui)
-        
+    print(selected_rxcui)
     if selected_rxcui == 'NULL':
         print(pd.DataFrame(np.array([term,'NULL',rxcui,'NULL','NULL']).reshape(1,-1), columns=['input_term','Name','rxcui','SNOMEDCT','MMSL']))
     else:
@@ -164,7 +166,7 @@ def test():
 
         if primary_IN_rxcui == 'NULL':
             primary_IN_rxcui = selected_rxcui
-
+        print(selected_rxcui)
         #codes = rxnorm.get_codes(rxcui = primary_IN_rxcui)
         #names = rxnorm.get_names(rxcui = primary_IN_rxcui)
 
