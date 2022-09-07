@@ -45,12 +45,6 @@ class RxNorm:
         rxcui = [rxcui_.text for rxcui_ in tree.findall('.//rxcui')]
         return rxcui
 
-
-
-
-
-
-
     def rxcui_by_snomed(self, task='get_rxcui_by_snomed', **kwargs):
         self.logger = create_logger(task)
         self.logger.info(f'start task {task}...')
@@ -77,13 +71,6 @@ class RxNorm:
         tree = ET.fromstring(requests.get(rest_api).text)
         rxcui = [rxcui_.text for rxcui_ in tree.findall('.//rxnormId')]
         return rxcui
-
-
-
-
-
-
-
 
     def primary_ingredient(self, task='get_primary_ingredient', **kwargs):
         self.logger = create_logger(task)
@@ -115,8 +102,6 @@ class RxNorm:
         else:
             return ingredient[0]
 
-        
-    
     def get_codes(self, task='get_rxcui_codes', **kwargs):
         self.logger = create_logger(task)
         self.logger.info(f'start task {task}...')
@@ -149,8 +134,6 @@ class RxNorm:
             MMSL = ['NULL']
 
         return ', '.join(SNOMED_CT), ', '.join(MMSL)
-
-
 
     def get_names(self, task='get_rxcui_names', **kwargs):
         self.logger = create_logger(task)
