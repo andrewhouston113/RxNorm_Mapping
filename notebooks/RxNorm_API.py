@@ -47,6 +47,44 @@ class RxNorm:
 
 
 
+
+
+
+
+    def rxcui_by_snomed(self, task='get_rxcui_by_snomed', **kwargs):
+        self.logger = create_logger(task)
+        self.logger.info(f'start task {task}...')
+        
+        if 'timeout' in kwargs:
+            self.timeout = kwargs.get('timeout')
+
+        if task == 'get_rxcui_by_snomed':
+            assert 'code' in kwargs, 'snomed code must be provided for this task'
+            return self.__get_rxcui_by_snomed(code=kwargs.get('code'))
+
+        # reset timeout to config timeout
+        self.timeout = REQUESTS_TIMEOUT
+
+    def __get_rxcui_by_snomed(self, code):
+        rest_api = self.rxnorm_restful_api.get_rxcui_by_snomed(code)
+        #self.logger.info(f'restful api: {rest_api}')
+
+        info = self.session.get(rest_api, headers=headers, timeout=self.timeout)
+        #self.logger.info(f'status: {info.status_code}')
+        if info.text == 'null':
+            return False
+
+        tree = ET.fromstring(requests.get(rest_api).text)
+        rxcui = [rxcui_.text for rxcui_ in tree.findall('.//rxnormId')]
+        return rxcui
+
+
+
+
+
+
+
+
     def primary_ingredient(self, task='get_primary_ingredient', **kwargs):
         self.logger = create_logger(task)
         self.logger.info(f'start task {task}...')
@@ -145,28 +183,32 @@ class RxNorm:
 
 def test():
     rxnorm = RxNorm()
-    term = "sodium chloride 0.9% intravenous solution 500 mL(s)"
-    rxcui = rxnorm.approximate_term(term = term)
+    snomed_code = 63718003
+    rxcui = rxnorm.rxcui_by_snomed(code = snomed_code)
+    print(rxcui)
 
-    i=0
-    while i < len(rxcui):
-        codes = rxnorm.get_codes(rxcui = rxcui[i])
+    #term = "sodium chloride 0.9% intravenous solution 500 mL(s)"
+    #rxcui = rxnorm.approximate_term(term = term)
 
-        if (codes[['SNOMEDCT','MMSL']]=='NULL').all(axis=1).values[0]:
-            i+=1
-            codes = rxnorm.get_codes(rxcui = rxcui[i])
-        else:
-            selected_rxcui = rxcui[i]
-            i=len(rxcui)
-    print(selected_rxcui)
-    if selected_rxcui == 'NULL':
-        print(pd.DataFrame(np.array([term,'NULL',rxcui,'NULL','NULL']).reshape(1,-1), columns=['input_term','Name','rxcui','SNOMEDCT','MMSL']))
-    else:
-        primary_IN_rxcui = rxnorm.primary_ingredient(rxcui=selected_rxcui)
+    #i=0
+    #while i < len(rxcui):
+    #    codes = rxnorm.get_codes(rxcui = rxcui[i])
 
-        if primary_IN_rxcui == 'NULL':
-            primary_IN_rxcui = selected_rxcui
-        print(selected_rxcui)
+    #    if (codes[['SNOMEDCT','MMSL']]=='NULL').all(axis=1).values[0]:
+    #        i+=1
+    #        codes = rxnorm.get_codes(rxcui = rxcui[i])
+    #    else:
+    #        selected_rxcui = rxcui[i]
+    #        i=len(rxcui)
+    #print(selected_rxcui)
+    #if selected_rxcui == 'NULL':
+    #    print(pd.DataFrame(np.array([term,'NULL',rxcui,'NULL','NULL']).reshape(1,-1), columns=['input_term','Name','rxcui','SNOMEDCT','MMSL']))
+    #else:
+    #    primary_IN_rxcui = rxnorm.primary_ingredient(rxcui=selected_rxcui)
+
+#        if primary_IN_rxcui == 'NULL':
+#            primary_IN_rxcui = selected_rxcui
+#        print(selected_rxcui)
         #codes = rxnorm.get_codes(rxcui = primary_IN_rxcui)
         #names = rxnorm.get_names(rxcui = primary_IN_rxcui)
 
